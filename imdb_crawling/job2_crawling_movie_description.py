@@ -15,7 +15,7 @@ while True:  # infinite loop for 'FileNotFoundError'
             service = Service(executable_path=f_driverPath.read())
     except FileNotFoundError:
         try:
-            with open('job1_install_chrome_driver.py', 'r') as f_install:
+            with open('./job1_install_chrome_driver.py', 'r') as f_install:
                 exec(f_install.read())
         except FileNotFoundError:
             exit(-1)
@@ -29,7 +29,8 @@ options.add_argument('user_agent=' + user_agent)
 
 driver = webdriver.Chrome(service=service, options=options)
 
-categories = ['Action', 'Comedy', 'Documentary', 'Drama', 'Romance', 'Thriller']
+# categories = ['Action', 'Comedy', 'Documentary', 'Drama', 'Romance', 'Thriller']
+categories = ['Drama']
 
 min_movie_cnt = sys.maxsize
 for category_idx in range(len(categories)):
@@ -39,6 +40,7 @@ for category_idx in range(len(categories)):
     movie_cnt = int(''.join(re.findall('\d', driver.find_element(By.XPATH, '//*[@id="sidebar"]/div[3]/table/tbody/tr[1]/td[1]').text)))
     if movie_cnt < min_movie_cnt:
         min_movie_cnt = movie_cnt
+min_movie_cnt = 10000
 
 MOVIE_CNT_IN_PAGE = 50
 df_description = pd.DataFrame()
