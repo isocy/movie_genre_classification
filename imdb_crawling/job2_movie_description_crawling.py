@@ -1,17 +1,17 @@
 import re
-import sys
+import os
 import pandas as pd
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
-from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
+from selenium.common.exceptions import *
 
 #  install chrome driver
 while True:  # infinite loop for 'FileNotFoundError'
     try:
-        with open('../chrome_driver_path.txt', 'r') as f_driverPath:
+        with open('./chrome_driver_path.txt', 'r') as f_driverPath:
             service = Service(executable_path=f_driverPath.read())
     except FileNotFoundError:
         try:
@@ -29,17 +29,11 @@ options.add_argument('user_agent=' + user_agent)
 
 driver = webdriver.Chrome(service=service, options=options)
 
-# categories = ['Action', 'Comedy', 'Documentary', 'Drama', 'Romance', 'Thriller']
-categories = ['Drama']
+if not os.path.isdir('./crawling_data/'):
+    os.mkdir('./crawling_data/')
 
-min_movie_cnt = sys.maxsize
-for category_idx in range(len(categories)):
-    url = f'https://www.imdb.com/search/title/?title_type=movie&genres={categories[category_idx].lower()}&start=1&explore=genres&ref_=adv_prv'
-    driver.get(url)
+categories = ['Action', 'Comedy', 'Documentary', 'Drama', 'Romance', 'Thriller']
 
-    movie_cnt = int(''.join(re.findall('\d', driver.find_element(By.XPATH, '//*[@id="sidebar"]/div[3]/table/tbody/tr[1]/td[1]').text)))
-    if movie_cnt < min_movie_cnt:
-        min_movie_cnt = movie_cnt
 min_movie_cnt = 10000
 
 MOVIE_CNT_IN_PAGE = 50
@@ -51,13 +45,18 @@ for category in categories:
     while cur_movie_idx <= min_movie_cnt:
         url = (f'https://www.imdb.com/search/title/?title_type=movie&genres={category.lower()}&start={cur_movie_idx}'
                f'&explore=genres&ref_=adv_prv')
-        driver.get(url)
+        try:
+            driver.get(url)
+        except TimeoutException:
+            continue
 
         for div_idx in range(MOVIE_CNT_IN_PAGE):
             try:
                 description = driver.find_element(By.XPATH, f'//*[@id="main"]/div/div[3]/div/div[{div_idx}]/div[3]/p[2]').text
             except NoSuchElementException:
                 continue
+            except NoSuchWindowException:
+                break
             refined_description = re.compile('[^a-z|A-Z]').sub(' ', description)
             refined_descriptions.append(refined_description)
 
@@ -67,4 +66,5 @@ for category in categories:
     df_section_description['category'] = category
     df_description = pd.concat([df_description, df_section_description], axis='rows', ignore_index=True)
     df_section_description.to_csv(f'./crawling_data/temp_{category}_movie_description.csv', index=False)
-df_description.to_csv('./crawling_data/all_movie_descriptions.csv', index=False)
+#  if the line below gets commented, then DO NOT RUN 'job2.5_concatenate_csvs.py'.
+# df_description.to_csv('./crawling_data/all_movie_descriptions.csv', index=False)
